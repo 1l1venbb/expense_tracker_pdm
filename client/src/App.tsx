@@ -33,28 +33,31 @@ import '@ionic/react/css/palettes/dark.system.css';
 import './theme/variables.css';
 import TransactionList from "./transactions/pages/TransactionList";
 import TransactionDetails from './transactions/pages/TransactionDetails';
+import { TransactionProvider } from "./transactions/TransactionProvider";
 
 setupIonicReact();
 
 const App: React.FC = () => (
     <IonApp>
         <IonReactRouter>
-            <IonRouterOutlet>
-                <Route
-                    path="/transactions"
-                    element={<TransactionList />}
-                />
+            <TransactionProvider>
+                <IonRouterOutlet>
+                    <Route
+                        path="/transactions/:id"
+                        element={<TransactionDetails />}
+                    />
 
-                <Route
-                    path="/"
-                    element={<Navigate to="/transactions" replace />}
-                />
+                    <Route
+                        path="/transactions"
+                        element={<TransactionList />}
+                    />
 
-                <Route
-                    path="/transactions/:id"
-                    element={<TransactionDetails />}
-                />
-            </IonRouterOutlet>
+                    <Route
+                        path="/"
+                        element={<Navigate to="/transactions" replace />}
+                    />
+                </IonRouterOutlet>
+            </TransactionProvider>
         </IonReactRouter>
     </IonApp>
 );
