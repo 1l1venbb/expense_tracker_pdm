@@ -23,9 +23,13 @@ dist
 !/.vscode/extensions.json
 .idea
 
+*.db
+
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
 # Optional eslint cache
 .eslintcache
+*.db-shm
+*.db-wal
