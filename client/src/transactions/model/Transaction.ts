@@ -7,4 +7,4 @@ export interface Transaction {
     description: string;
     isRecurring: boolean;
     type: 'income' | 'expense';
-}   
+}
