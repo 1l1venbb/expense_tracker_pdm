@@ -8,7 +8,7 @@ import {
 } from 'react';
 
 import type { Transaction } from './model/Transaction';
-import { getTransactions } from './services/transactionAPI';
+import { createTransaction, getTransactions } from './services/transactionAPI';
 
 type Action =
     | { type: 'FETCH_SUCCESS'; transactions: Transaction[] }
@@ -21,6 +21,7 @@ interface TransactionContextValue {
     loading: boolean;
     error: string | null;
     connected: boolean;
+    addExpense: (expense: Omit<Transaction, 'id' | 'type'>) => Promise<void>;
 }
 
 const TransactionContext = createContext<TransactionContextValue | undefined>(
@@ -33,7 +34,10 @@ function transactionReducer(
 ): Transaction[] {
     switch (action.type) {
         case 'FETCH_SUCCESS':
-            return action.transactions;
+            // Keep expenses saved while the initial snapshot was in flight.
+            return [...action.transactions, ...state.filter(transaction =>
+                !action.transactions.some(fetched => fetched.id === transaction.id)
+            )];
 
         case 'CREATED':
             if (state.some(t => t.id === action.transaction.id)) {
@@ -61,6 +65,11 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [connected, setConnected] = useState(false);
+
+    const addExpense = async (expense: Omit<Transaction, 'id' | 'type'>) => {
+        const transaction = await createTransaction({ ...expense, type: 'expense' });
+        dispatch({ type: 'CREATED', transaction });
+    };
 
     useEffect(() => {
         let active = true;
@@ -150,7 +159,7 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
 
     return (
         <TransactionContext.Provider
-            value={{ transactions, loading, error, connected }}
+            value={{ transactions, loading, error, connected, addExpense }}
         >
             {children}
         </TransactionContext.Provider>

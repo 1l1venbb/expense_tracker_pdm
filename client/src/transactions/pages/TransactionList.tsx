@@ -8,7 +8,8 @@ import {
     IonSpinner,
     IonTitle,
     IonToolbar,
-    IonBadge
+    IonBadge,
+    IonButton
 } from '@ionic/react';
 
 import { useTransactions } from '../TransactionProvider';
@@ -32,6 +33,11 @@ const TransactionList: React.FC = () => {
             </IonHeader>
 
             <IonContent>
+                <div className="ion-padding">
+                    <IonButton routerLink="/transactions/new" routerDirection="forward">
+                        Add expense
+                    </IonButton>
+                </div>
                 {loading ? (
                     <div className="ion-text-center ion-padding">
                         <IonSpinner />

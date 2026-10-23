@@ -5,6 +5,11 @@ const api = axios.create({
     baseURL: 'http://localhost:3000'
 });
 
+export const createTransaction = async (transaction: Omit<Transaction, 'id'>): Promise<Transaction> => {
+    const response = await api.post<Transaction>('/transactions', transaction);
+    return response.data;
+};
+
 export const getTransactions = async () => {
     const response = await api.get<Transaction[]>('/transactions');
     return response.data;

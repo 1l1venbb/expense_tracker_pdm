@@ -30,9 +30,9 @@ import '@ionic/react/css/display.css';
 import '@ionic/react/css/palettes/dark.system.css';
 
 /* Theme variables */
-import './theme/variables.css';
 import TransactionList from "./transactions/pages/TransactionList";
 import TransactionDetails from './transactions/pages/TransactionDetails';
+import AddExpense from './transactions/pages/AddExpense';
 import { TransactionProvider } from "./transactions/TransactionProvider";
 
 setupIonicReact();
@@ -42,6 +42,7 @@ const App: React.FC = () => (
         <IonReactRouter>
             <TransactionProvider>
                 <IonRouterOutlet>
+                    <Route path="/transactions/new" element={<AddExpense />} />
                     <Route
                         path="/transactions/:id"
                         element={<TransactionDetails />}
