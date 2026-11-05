@@ -34,32 +34,37 @@ import TransactionList from "./transactions/pages/TransactionList";
 import TransactionDetails from './transactions/pages/TransactionDetails';
 import AddExpense from './transactions/pages/AddExpense';
 import { TransactionProvider } from "./transactions/TransactionProvider";
+import { AuthProvider } from './auth/AuthProvider';
+import RequireAuth from './auth/RequireAuth';
+import Login from './auth/pages/Login';
+import Register from './auth/pages/Register';
 
 setupIonicReact();
 
 const App: React.FC = () => (
     <IonApp>
-        <IonReactRouter>
+        <AuthProvider>
             <TransactionProvider>
-                <IonRouterOutlet>
-                    <Route path="/transactions/new" element={<AddExpense />} />
-                    <Route
-                        path="/transactions/:id"
-                        element={<TransactionDetails />}
-                    />
+                <IonReactRouter>
+                    <IonRouterOutlet>
+                        <Route path="/login" element={<Login />} />
+                        <Route path="/register" element={<Register />} />
 
-                    <Route
-                        path="/transactions"
-                        element={<TransactionList />}
-                    />
+                        <Route path="/transactions/new" element={
+                            <RequireAuth><AddExpense /></RequireAuth>
+                        } />
+                        <Route path="/transactions/:id" element={
+                            <RequireAuth><TransactionDetails /></RequireAuth>
+                        } />
+                        <Route path="/transactions" element={
+                            <RequireAuth><TransactionList /></RequireAuth>
+                        } />
 
-                    <Route
-                        path="/"
-                        element={<Navigate to="/transactions" replace />}
-                    />
-                </IonRouterOutlet>
+                        <Route path="/" element={<Navigate to="/transactions" replace />} />
+                    </IonRouterOutlet>
+                </IonReactRouter>
             </TransactionProvider>
-        </IonReactRouter>
+        </AuthProvider>
     </IonApp>
 );
 
