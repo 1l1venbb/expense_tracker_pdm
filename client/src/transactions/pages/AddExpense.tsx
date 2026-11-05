@@ -38,11 +38,11 @@ const AddExpense: React.FC = () => {
         setSaving(true);
         setError(null);
         try {
-            await addExpense({
+            const { synced } = await addExpense({
                 title: title.trim(), amount: numericAmount, category: category.trim(),
                 date, description: description.trim(), isRecurring
             });
-            navigate('/transactions', { replace: true });
+            navigate('/transactions', { replace: true, state: { offlineSaved: !synced } });
         } catch {
             setError('Could not save the expense. Please try again.');
         } finally {
