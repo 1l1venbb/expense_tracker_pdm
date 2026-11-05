@@ -3,21 +3,56 @@ const router = express.Router();
 
 const db = require('../database');
 
-router.get('/', (req, res) => {
-    const transactions = db.prepare(
-        'SELECT * FROM transactions'
-    ).all();
+// Builds the WHERE clause shared by listing and searching, always scoped
+// to the authenticated user so nobody can see another user's data.
+function buildFilter(userId, { search, type }) {
+    const conditions = ['userId = ?'];
+    const params = [userId];
 
-    res.json(transactions.map(t => ({
-        ...t,
-        isRecurring: Boolean(t.isRecurring)
-    })));
+    if (search && search.trim()) {
+        conditions.push('(title LIKE ? OR category LIKE ? OR description LIKE ?)');
+        const like = `%${search.trim()}%`;
+        params.push(like, like, like);
+    }
+
+    if (type === 'income' || type === 'expense') {
+        conditions.push('type = ?');
+        params.push(type);
+    }
+
+    return { where: conditions.join(' AND '), params };
+}
+
+router.get('/', (req, res) => {
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.max(1, parseInt(req.query.limit, 10) || 10);
+
+    const { where, params } = buildFilter(req.userId, req.query);
+
+    const total = db.prepare(
+        `SELECT COUNT(*) AS count FROM transactions WHERE ${where}`
+    ).get(...params).count;
+
+    const transactions = db.prepare(`
+        SELECT * FROM transactions
+        WHERE ${where}
+        ORDER BY date DESC, id DESC
+        LIMIT ? OFFSET ?
+    `).all(...params, limit, (page - 1) * limit);
+
+    res.json({
+        transactions: transactions.map(t => ({ ...t, isRecurring: Boolean(t.isRecurring) })),
+        page,
+        limit,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / limit))
+    });
 });
 
 router.get('/:id', (req, res) => {
     const transaction = db.prepare(
-        'SELECT * FROM transactions WHERE id = ?'
-    ).get(req.params.id);
+        'SELECT * FROM transactions WHERE id = ? AND userId = ?'
+    ).get(req.params.id, req.userId);
 
     if (!transaction) {
         return res.status(404).json({
@@ -53,9 +88,10 @@ router.post('/', (req, res) => {
 
     const result = db.prepare(`
         INSERT INTO transactions
-        (title, amount, category, date, description, isRecurring, type)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        (userId, title, amount, category, date, description, isRecurring, type)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
+        req.userId,
         title,
         amount,
         category,
@@ -67,12 +103,13 @@ router.post('/', (req, res) => {
 
     const transaction = {
         id: Number(result.lastInsertRowid),
+        userId: req.userId,
         title, amount, category, date,
         description: description ?? '',
         isRecurring, type
     };
 
-    req.app.locals.broadcast({
+    req.app.locals.broadcast(req.userId, {
         event: 'transaction_created',
         transaction
     });
@@ -83,8 +120,8 @@ router.post('/', (req, res) => {
 
 router.put('/:id', (req, res) => {
     const existing = db.prepare(
-        'SELECT * FROM transactions WHERE id = ?'
-    ).get(req.params.id);
+        'SELECT * FROM transactions WHERE id = ? AND userId = ?'
+    ).get(req.params.id, req.userId);
 
     if (!existing) {
         return res.status(404).json({
@@ -95,7 +132,8 @@ router.put('/:id', (req, res) => {
     const updated = {
         ...existing,
         ...req.body,
-        id: existing.id
+        id: existing.id,
+        userId: existing.userId
     };
 
     // Convert boolean from SQLite back to JavaScript
@@ -121,7 +159,7 @@ router.put('/:id', (req, res) => {
         UPDATE transactions
         SET title = ?, amount = ?, category = ?, date = ?,
             description = ?, isRecurring = ?, type = ?
-        WHERE id = ?
+        WHERE id = ? AND userId = ?
     `).run(
         updated.title,
         updated.amount,
@@ -130,10 +168,11 @@ router.put('/:id', (req, res) => {
         updated.description,
         Number(updated.isRecurring),
         updated.type,
-        updated.id
+        updated.id,
+        req.userId
     );
 
-    req.app.locals.broadcast({
+    req.app.locals.broadcast(req.userId, {
         event: 'transaction_updated',
         transaction: updated
     });
@@ -145,8 +184,8 @@ router.put('/:id', (req, res) => {
 
 router.delete('/:id', (req, res) => {
     const existing = db.prepare(
-        'SELECT * FROM transactions WHERE id = ?'
-    ).get(req.params.id);
+        'SELECT * FROM transactions WHERE id = ? AND userId = ?'
+    ).get(req.params.id, req.userId);
 
     if (!existing) {
         return res.status(404).json({
@@ -155,10 +194,10 @@ router.delete('/:id', (req, res) => {
     }
 
     db.prepare(
-        'DELETE FROM transactions WHERE id = ?'
-    ).run(req.params.id);
+        'DELETE FROM transactions WHERE id = ? AND userId = ?'
+    ).run(req.params.id, req.userId);
 
-    req.app.locals.broadcast({
+    req.app.locals.broadcast(req.userId, {
         event: 'transaction_deleted',
         transaction: {
             ...existing,
